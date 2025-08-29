@@ -17,10 +17,19 @@ Editor :: struct {
 }
 
 make_editor :: proc(font: cstring, font_size: f32 = 20, font_spacing: f32 = 2) -> Editor {
+	cam := Camera {
+		lim = 10,
+	}
+
 	state := Editor {
 		data = make([dynamic][dynamic]rune),
 		screen = get_screen_size(),
-		opts = {font = rl.LoadFont(font), font_size = font_size, font_spacing = font_spacing},
+		opts = FontOpts {
+			font = rl.LoadFont(font),
+			font_size = font_size,
+			font_spacing = font_spacing,
+		},
+		camera = cam,
 	}
 
 	append(&state.data, make([dynamic]rune))
@@ -37,6 +46,13 @@ free_editor :: proc(self: ^Editor) {
 }
 
 update :: proc(self: ^Editor) {
+	{ 	// update camera
+		if rl.IsWindowResized() {
+			update_camera_rows(&self.camera, int(self.opts.font_size))
+			fmt.println(self.camera.n_rows, self.camera.pos)
+		}
+	}
+
 	{ 	// handle chars
 		c := rl.GetCharPressed()
 		switch c {
@@ -44,7 +60,7 @@ update :: proc(self: ^Editor) {
 		case:
 			idx := min(self.cur.x, len(self.data[self.cur.y]))
 			inject_at(&self.data[self.cur.y], idx, c)
-			self.cur.x += 1
+			self.cur.x = idx + 1
 		}
 	}
 
@@ -61,8 +77,23 @@ update :: proc(self: ^Editor) {
 		case .DOWN:
 			move_down_checked(self)
 		case .BACKSPACE:
-			remove_idx(&self.data[self.cur.y], self.cur.x)
-			self.cur.x -= 1
+			if self.cur.x == 0 {
+				if self.cur.y > 0 {
+					row_len := len(self.data[self.cur.y - 1])
+					append(&self.data[self.cur.y - 1], ..self.data[self.cur.y][:])
+					ordered_remove(&self.data, self.cur.y)
+					move_up(self)
+					self.cur.x = row_len
+				}
+			} else {
+				if len(self.data[self.cur.y]) > 0 {
+					ordered_remove(
+						&self.data[self.cur.y],
+						min(self.cur.x, len(self.data[self.cur.y]) - 1),
+					)
+				}
+				self.cur.x -= 1
+			}
 		case .ENTER, .KP_ENTER:
 			insert_enter(self)
 		}
@@ -74,6 +105,7 @@ callback :: proc(pos: ^Vec2, size: Vec2) {
 }
 
 render_editor :: proc(self: ^Editor) {
+	// #UI_CODE_SHOULD_BE_UGLY
 	num_width := measure_rune('8', rl.GetFontDefault(), 2.0)
 	x_offset := num_width * 5 + 10
 	pos := Vec2{x_offset, 5}
@@ -81,8 +113,8 @@ render_editor :: proc(self: ^Editor) {
 	rl.DrawRectangleRec({0, 0, x_offset, f32(rl.GetScreenHeight())}, rl.DARKGRAY)
 
 	line_buf: [10]u8
-    screen_height := f32(rl.GetScreenHeight());
-    i := max(self.camera.pos - self.camera.n_rows / 2 - 1, 0)
+	screen_height := f32(rl.GetScreenHeight())
+	i := max(self.cur.y - self.camera.pos, 0)
 	for &text_buffer in self.data[i:] {
 		pos.x = 5
 		line_num := abs_diff(self.cur.y, i)
@@ -115,7 +147,8 @@ render_editor :: proc(self: ^Editor) {
 			render_slice(text_buffer[:], pos, self.opts, rl.BLACK)
 		}
 		pos.y += self.opts.font_size
-        if pos.y >= screen_height do break
+		if pos.y >= screen_height do break
+		i += 1
 	}
 }
 

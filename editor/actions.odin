@@ -34,9 +34,10 @@ move_right :: proc(self: ^Editor) {
 
 move_up :: proc(self: ^Editor) {
 	self.cur.y -= 1
-    if delta := self.camera.pos - self.cur.y; delta > self.camera.lim {
-        self.camera.pos = self.cur.y + self.camera.lim
-    }
+    self.camera.pos -= 1
+	if self.camera.pos < self.camera.lim {
+		self.camera.pos = self.camera.lim
+	}
 }
 
 move_up_checked :: proc(self: ^Editor) {
@@ -47,9 +48,10 @@ move_up_checked :: proc(self: ^Editor) {
 
 move_down :: proc(self: ^Editor) {
 	self.cur.y += 1
-    if delta := self.cur.y - self.camera.pos; delta > self.camera.lim {
-        self.camera.pos = self.cur.y - self.camera.lim
-    }
+	self.camera.pos += 1
+	if abs_diff(self.camera.pos, self.camera.n_rows) < self.camera.lim {
+		self.camera.pos = self.camera.n_rows - self.camera.lim
+	}
 }
 
 move_down_checked :: proc(self: ^Editor) {
@@ -64,9 +66,7 @@ insert_enter :: proc(self: ^Editor) {
 	new_row := make(TextBuffer)
 
 	if idx != len(row) {
-		for c in row[idx:] {
-			append(&new_row, c)
-		}
+		append(&new_row, ..row[idx:])
 
 		remove_range(row, idx, len(row))
 	}
