@@ -21,14 +21,17 @@ make_editor :: proc(font: cstring, font_size: f32 = 20, font_spacing: f32 = 2) -
 		lim = 10,
 	}
 
+	font_f: rl.Font
+	if len(font) == 0 {
+		font_f = rl.GetFontDefault()
+	} else {
+		font_f = rl.LoadFont(font)
+	}
+
 	state := Editor {
 		data = make([dynamic][dynamic]rune),
 		screen = get_screen_size(),
-		opts = FontOpts {
-			font = rl.LoadFont(font),
-			font_size = font_size,
-			font_spacing = font_spacing,
-		},
+		opts = FontOpts{font = font_f, font_size = font_size, font_spacing = font_spacing},
 		camera = cam,
 	}
 
@@ -38,6 +41,7 @@ make_editor :: proc(font: cstring, font_size: f32 = 20, font_spacing: f32 = 2) -
 }
 
 free_editor :: proc(self: ^Editor) {
+	rl.UnloadFont(self.opts.font)
 	for &i in self.data {
 		delete(i)
 	}
@@ -150,6 +154,8 @@ render_editor :: proc(self: ^Editor) {
 		if pos.y >= screen_height do break
 		i += 1
 	}
+
+	rl.DrawTextEx(self.opts.font, "BIG SIGMA RIZZ", {50, 50}, 20, 2, rl.GREEN)
 }
 
 get_screen_size :: proc() -> IVec2 {
