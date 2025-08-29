@@ -154,8 +154,6 @@ render_editor :: proc(self: ^Editor) {
 		if pos.y >= screen_height do break
 		i += 1
 	}
-
-	rl.DrawTextEx(self.opts.font, "BIG SIGMA RIZZ", {50, 50}, 20, 2, rl.GREEN)
 }
 
 get_screen_size :: proc() -> IVec2 {
